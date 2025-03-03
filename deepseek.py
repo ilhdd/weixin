@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # DeepSeek API 的配置
-DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat"  # 替换为实际的 DeepSeek API URL
-DEEPSEEK_API_KEY = "your-deepseek-api-key"  # 替换为你的 DeepSeek API Key
+DEEPSEEK_API_URL = "https://api.deepseek.com"  # 替换为实际的 DeepSeek API URL
+DEEPSEEK_API_KEY = "sk-137f9f346e6646528f019b73d034b0b4"  # 替换为你的 DeepSeek API Key
 
 # 用于存储用户对话上下文（可根据实际需求替换为数据库）
 user_contexts = {}
