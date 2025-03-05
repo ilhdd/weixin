@@ -9,30 +9,26 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # DeepSeek API 的配置
-DEEPSEEK_API_URL = "https://api.deepseek.com"  # 替换为实际的 DeepSeek API URL
-DEEPSEEK_API_KEY = "sk-137f9f346e6646528f019b73d034b0b4"  # 替换为你的 DeepSeek API Key
+DEEPSEEK_API_URL = " https://api.deepseek.com"  # 替换为实际的 DeepSeek API URL
+DEEPSEEK_API_KEY = " sk-137f9f346e6646528f019b73d034b0b4"  # 替换为你的 DeepSeek API Key
 
 # 用于存储用户对话上下文（可根据实际需求替换为数据库）
 user_contexts = {}
 
 def generate_recommendation_prompt(age_groups, time, city, budget, transportation, departure, destination):
     """
-    根据用户输入生成推荐提示，优先级如下：
-    1. 年龄段
-    2. 旅行的时间地点
-    3. 预算
-    4. 交通方式
-    5. 出发位置和目的地
+    根据用户输入生成推荐提示，使用木桶效应进行推荐。
+    缺失的数据用 ? 表示。
     """
     return (
         f"用户计划从 {departure} 前往 {destination} 旅游，时间为 {time}，预算为 {budget}。"
         f"年龄段分布：青年（{age_groups['young']}人），中年（{age_groups['middle']}人），老年（{age_groups['old']}人）。"
-        f"请按照以下优先级推荐最佳旅游路线（包含景点名称、文字介绍、推荐参观时间点）、交通方式和大致预算："
-        f"1. 优先考虑年龄段，推荐适合青年、中年、老年的景点和活动。"
-        f"2. 根据旅行时间和地点推荐合适的景点。"
-        f"3. 在预算范围内推荐景点和活动。"
-        f"4. 根据交通方式推荐合适的路线。"
-        f"5. 考虑出发位置和目的地的距离和交通便利性。"
+        f"交通方式为 {transportation}。请按照以下优先级推荐："
+        f"1. 最佳旅游路线（包含景点名称、文字介绍、推荐参观时间点）。"
+        f"2. 交通方式。"
+        f"3. 推荐预算。"
+        f"4. 当地美食推荐。"
+        f"注意：使用木桶效应进行推荐，确保满足最低优先级的需求。"
     )
 
 @app.route('/deepseek', methods=['POST'])
@@ -40,22 +36,22 @@ def deepseek():
     # 获取用户输入和用户 ID（用于维护上下文）
     data = request.json
     age_groups = {
-        "young": data.get("young", 0),  # 青年人数
-        "middle": data.get("middle", 0),  # 中年人数
-        "old": data.get("old", 0)  # 老年人数
+        "young": data.get("young", "?"),  # 青年人数，缺失时用 ? 表示
+        "middle": data.get("middle", "?"),  # 中年人数，缺失时用 ? 表示
+        "old": data.get("old", "?")  # 老年人数，缺失时用 ? 表示
     }
-    time = data.get("time")  # 旅行时间
-    city = data.get("city")  # 旅行地点
-    budget = data.get("budget")  # 预算
-    transportation = data.get("transportation")  # 交通方式
-    departure = data.get("departure")  # 出发位置
-    destination = data.get("destination")  # 想要去的位置
+    time = data.get("time", "?")  # 旅行时间，缺失时用 ? 表示
+    city = data.get("city", "?")  # 旅行地点，缺失时用 ? 表示
+    budget = data.get("budget", "?")  # 预算，缺失时用 ? 表示
+    transportation = data.get("transportation", "?")  # 交通方式，缺失时用 ? 表示
+    departure = data.get("departure", "?")  # 出发位置，缺失时用 ? 表示
+    destination = data.get("destination", "?")  # 想要去的位置，缺失时用 ? 表示
     user_id = data.get("user_id")  # 用户 ID
-    user_feedback = data.get("feedback")  # 用户反馈（可选）
+    user_feedback = data.get("feedback", "")  # 用户反馈（可选）
 
-    # 验证输入
-    if not all([time, city, budget, transportation, departure, destination]):
-        return jsonify({"error": "time, city, budget, transportation, departure, and destination are required"}), 400
+    # 验证用户 ID
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
 
     # 获取用户上下文（如果存在）
     context = user_contexts.get(user_id, [])
@@ -88,14 +84,20 @@ def deepseek():
         context.append({"role": "assistant", "content": assistant_response})
         user_contexts[user_id] = context
 
+        # 解析输出格式
+        output = {
+            "最佳旅游路线": assistant_response,  # 假设 DeepSeek 返回的格式符合要求
+            "交通方式": transportation if transportation != "?" else "待补充",
+            "推荐预算": budget if budget != "?" else "待补充",
+            "当地美食推荐": "待补充"  # 可以根据需要从 DeepSeek 返回的内容中提取
+        }
+
         # 返回结果
-        return jsonify({
-            "response": assistant_response,
-            "context": context  # 返回当前上下文（可选）
-        })
+        return jsonify(output)
     except requests.exceptions.RequestException as e:
         logger.error(f"DeepSeek API 调用失败: {e}")
         return jsonify({"error": "DeepSeek API 调用失败，请稍后重试"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
