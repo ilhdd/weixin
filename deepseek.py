@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 # DeepSeek API 的配置
 DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"  # 替换为实际的 DeepSeek API URL
-DEEPSEEK_API_KEY = "sk-137f9f346e6646528f019b73d034b0b4"  # 替换为你的 DeepSeek API Key
+DEEPSEEK_API_KEY = "sk-6888b6411c4949f1b99a2568eae28524"  # 替换为你的 DeepSeek API Key
 
 # 缓存：存储每个用户的最近一轮对话输出
 user_cache = {}
