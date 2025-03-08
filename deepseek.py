@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 # DeepSeek API 的配置
 DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"  # 替换为实际的 DeepSeek API URL
-DEEPSEEK_API_KEY = "sk-37c7b776a016480191f7e0e7457f4b25"  # 替换为你的 DeepSeek API Key
+DEEPSEEK_API_KEY = "sk-c47f6f0e0dc74381960322fa682a1529"  # 替换为你的 DeepSeek API Key
 
 # 缓存：存储每个用户的最近一轮对话输出
 user_cache = {}
@@ -73,18 +73,29 @@ def deepseek():
     prompt = generate_recommendation_prompt(age_groups, time, city, budget, transportation, departure, destination, user_feedback)
 
     try:
-        # 调用 DeepSeek API
+        # 打印发送给 DeepSeek API 的请求体
+        logger.info(f"Sending request to DeepSeek API with payload: {prompt}")
+        
         response = requests.post(
             DEEPSEEK_API_URL,
             json={
-                "model": "deepseek-reasoner",  # 指定使用 deepseek-reasoner 模型
-                "messages": [{"role": "user", "content": prompt}],  # 发送当前输入
-                "api_key": DEEPSEEK_API_KEY
+                "model": "deepseek-reasoner",
+                "messages": [{"role": "user", "content": prompt}]
             },
-            headers={"Content-Type": "application/json"},
-            timeout=10  # 设置超时时间
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
+            },
+            timeout=10
         )
-        response.raise_for_status()  # 检查是否有错误
+        
+        # 打印响应的状态码
+        logger.info(f"Received response from DeepSeek API with status code: {response.status_code}")
+
+        # 打印响应的内容
+        logger.info(f"Response content: {response.text}")
+
+        response.raise_for_status()
         result = response.json()
 
         # 解析输出格式
@@ -103,8 +114,8 @@ def deepseek():
         # 返回结果
         return jsonify(output)
     except requests.exceptions.RequestException as e:
-        logger.error(f"DeepSeek API 调用失败: {e}")
-        return jsonify({"error": "DeepSeek API 调用失败，请稍后重试"}), 500
+        logger.error(f"DeepSeek API 调用失败, 具体错误: {e}, 请求体: {prompt}")
+        return jsonify({"error": f"DeepSeek API 调用失败，请稍后重试 ({str(e)})"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
