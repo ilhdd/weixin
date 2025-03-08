@@ -4,8 +4,15 @@ import logging
 
 app = Flask(__name__)
 
+
 # 配置日志
-logging.basicConfig(level=logging.INFO)
+log_file_path = 'app.log'  # 日志文件路径
+logging.basicConfig(
+    level=logging.INFO,
+    filename=log_file_path,  # 将日志记录到文件
+    filemode='a',  # 追加模式
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # DeepSeek API 的配置
