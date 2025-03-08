@@ -86,7 +86,7 @@ def deepseek():
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
             },
-            timeout=10
+            timeout=60
         )
         
         # 打印响应的状态码
