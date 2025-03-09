@@ -77,6 +77,134 @@ def generate_recommendation_prompt(planId, agelevel, young, middle, old, startda
     
     return base_prompt
 
+                 
+@app.route('/deepseek_test', methods=['POST'])
+def deepseek():
+    # 获取用户输入
+    data = request.json
+
+    # 获取 planId
+    planId = data.get("planId")  # 用户 ID
+    
+    # 验证 planId 是否存在
+    if not planId:
+        return jsonify({"error": "planId is required"}), 400
+
+    operation = data.get("operation")
+    if not operation:
+        return jsonify({"error": "operation is required"}), 400
+
+    if operation == "confirm":
+        # 确认操作，删除缓存中的数据并结束操作
+        if planId in user_cache:
+            del user_cache[planId]
+            logger.info(f"计划 {planId} 的对话结果已从缓存中删除。")
+        return jsonify({"message": "操作已确认，对话结束。"})
+
+    feedback = data.get("feedback", "")  # 用户反馈
+
+    if operation == "init":
+        # 初始化操作，创建新的对话
+        agelevel = data.get("agelevel", "?")  # 年龄段
+        young = data.get("young", "?")  # 青年人数
+        middle = data.get("middle", "?")  # 中年人数
+        old = data.get("old", "?")  # 老年人数
+        startdate = data.get("startdate", "?")  # 旅行开始日期
+        enddate = data.get("enddate", "?")  # 旅行结束日期
+        budget = data.get("budget", "?")  # 预算
+        transportation = data.get("transportation", "?")  # 交通方式
+        departure = data.get("departure", "?")  # 出发位置
+        destination = data.get("destination", "?")  # 目的地
+        preference = data.get("preference", "")  # 用户偏好
+
+        prompt = generate_recommendation_prompt(planId, agelevel, young, middle, old, startdate, enddate, budget, transportation, departure, destination, preference)
+
+        # 存储初始数据到缓存
+        user_cache[planId] = {
+            "agelevel": agelevel,
+            "young": young,
+            "middle": middle,
+            "old": old,
+            "startdate": startdate,
+            "enddate": enddate,
+            "budget": budget,
+            "transportation": transportation,
+            "departure": departure,
+            "destination": destination,
+            "preference": preference,
+            "最佳旅游路线": ""
+        }
+    elif operation in ["continue", "reload"]:
+        # 继续或重新加载操作，从缓存中读取数据并添加用户反馈
+        if planId not in user_cache:
+            return jsonify({"error": "planId not found in cache, please initialize first"}), 400
+        cached_data = user_cache[planId]
+        prompt = f"{cached_data['最佳旅游路线']} {feedback}"
+    else:
+        return jsonify({"error": "Invalid operation"}), 400
+
+    try:
+        # 打印发送给 DeepSeek API 的请求体
+        logger.info(f"Sending request to DeepSeek API with payload: {prompt}")
+        
+        # 模拟 DeepSeek API 的响应
+        assistant_response = """
+        {
+            "title": "示例旅行标题",
+            "itinerary": [
+                {
+                    "date": "2023-10-01",
+                    "schedule": [
+                        {
+                            "startTime": "09:00",
+                            "endTime": "12:00",
+                            "subtitle": "参观故宫",
+                            "budget": 200,
+                            "transportation": "地铁",
+                            "accommodation": "无",
+                            "foodRecommendations": "附近有老北京炸酱面",
+                            "attractionIntroduction": "故宫是中国明清两代的皇家宫殿，位于北京中轴线的中心。",
+                            "notes": "建议提前预约门票"
+                        }
+                    ]
+                }
+            ],
+            "costSummary": {
+                "highSpeedRail": 500,
+                "accommodation": 1000,
+                "meals": 300,
+                "attractionTransportation": 100,
+                "other": 200,
+                "total": 2100
+            },
+            "notes": [
+                "注意天气变化",
+                "携带身份证"
+            ]
+        }
+        """
+        
+        # 打印响应的内容
+        logger.info(f"Response content: {assistant_response}")
+
+        # 解析输出格式
+        try:
+            output = json.loads(assistant_response)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response: {e}")
+            return jsonify({"error": "Failed to parse JSON response from DeepSeek API"}), 500
+
+        # 更新缓存
+        user_cache[planId]['最佳旅游路线'] = assistant_response
+        logger.info(f"计划 {planId} 的对话结果已更新到缓存。")
+
+        # 返回结果
+        return jsonify(output)
+    except Exception as e:
+        logger.error(f"模拟 DeepSeek API 调用失败, 具体错误: {e}, 请求体: {prompt}")
+        return jsonify({"error": f"模拟 DeepSeek API 调用失败，请稍后重试 ({str(e)})"}), 500
+
+                 
 @app.route('/deepseek', methods=['POST'])
 def deepseek():
     # 获取用户输入
