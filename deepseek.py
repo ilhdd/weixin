@@ -298,6 +298,7 @@ def deepseek():
 
         # 解析输出格式
         assistant_response = result["choices"][0]["message"]["content"]
+        logger.info(f"Response content: {assistant_response}")
         try:
             output = json.loads(assistant_response)
         except json.JSONDecodeError as e:
