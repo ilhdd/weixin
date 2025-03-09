@@ -150,38 +150,278 @@ def deepseek_test():
         # 模拟 DeepSeek API 的响应
         assistant_response = """
         {
-            "title": "示例旅行标题",
-            "itinerary": [
-                {
-                    "date": "2023-10-01",
-                    "schedule": [
-                        {
-                            "startTime": "09:00",
-                            "endTime": "12:00",
-                            "subtitle": "参观故宫",
-                            "budget": 200,
-                            "transportation": "地铁",
-                            "accommodation": "无",
-                            "foodRecommendations": "附近有老北京炸酱面",
-                            "attractionIntroduction": "故宫是中国明清两代的皇家宫殿，位于北京中轴线的中心。",
-                            "notes": "建议提前预约门票"
-                        }
-                    ]
-                }
-            ],
-            "costSummary": {
-                "highSpeedRail": 500,
-                "accommodation": 1000,
-                "meals": 300,
-                "attractionTransportation": 100,
-                "other": 200,
-                "total": 2100
-            },
-            "notes": [
-                "注意天气变化",
-                "携带身份证"
-            ]
+  "title": "北京至上海历史文化美食之旅",
+  "itinerary": [
+    {
+      "date": "2023-10-01",
+      "schedule": [
+        {
+          "startTime": "08:00",
+          "endTime": "12:00",
+          "subtitle": "北京南站至上海虹桥站",
+          "budget": 553,
+          "transportation": "高铁",
+          "accommodation": "无",
+          "foodRecommendations": "高铁餐",
+          "attractionIntroduction": "乘坐高铁从北京南站前往上海虹桥站，车程约4小时。",
+          "notes": "建议提前预订高铁票，确保座位。"
+        },
+        {
+          "startTime": "12:30",
+          "endTime": "14:00",
+          "subtitle": "午餐",
+          "budget": 100,
+          "transportation": "步行",
+          "accommodation": "无",
+          "foodRecommendations": "上海小笼包",
+          "attractionIntroduction": "在上海虹桥站附近品尝正宗上海小笼包。",
+          "notes": "推荐尝试蟹粉小笼包。"
+        },
+        {
+          "startTime": "14:30",
+          "endTime": "17:30",
+          "subtitle": "上海博物馆",
+          "budget": 0,
+          "transportation": "地铁",
+          "accommodation": "无",
+          "foodRecommendations": "无",
+          "attractionIntroduction": "参观上海博物馆，了解中国历史文化。",
+          "notes": "博物馆免费开放，建议提前预约。"
+        },
+        {
+          "startTime": "18:00",
+          "endTime": "19:30",
+          "subtitle": "晚餐",
+          "budget": 150,
+          "transportation": "步行",
+          "accommodation": "无",
+          "foodRecommendations": "本帮菜",
+          "attractionIntroduction": "品尝上海本帮菜，如红烧肉、油爆虾等。",
+          "notes": "推荐餐厅：老正兴菜馆。"
+        },
+        {
+          "startTime": "20:00",
+          "endTime": "22:00",
+          "subtitle": "外滩夜景",
+          "budget": 0,
+          "transportation": "步行",
+          "accommodation": "无",
+          "foodRecommendations": "无",
+          "attractionIntroduction": "漫步外滩，欣赏黄浦江两岸的夜景。",
+          "notes": "建议带上相机，记录美丽瞬间。"
         }
+      ]
+    },
+    {
+      "date": "2023-10-02",
+      "schedule": [
+        {
+          "startTime": "09:00",
+          "endTime": "12:00",
+          "subtitle": "豫园",
+          "budget": 40,
+          "transportation": "地铁",
+          "accommodation": "无",
+          "foodRecommendations": "无",
+          "attractionIntroduction": "游览豫园，感受江南园林的精致与古典。",
+          "notes": "豫园门票40元，建议提前购买。"
+        },
+        {
+          "startTime": "12:30",
+          "endTime": "14:00",
+          "subtitle": "午餐",
+          "budget": 100,
+          "transportation": "步行",
+          "accommodation": "无",
+          "foodRecommendations": "南翔小笼包",
+          "attractionIntroduction": "在豫园附近品尝南翔小笼包。",
+          "notes": "推荐尝试蟹粉小笼包。"
+        },
+        {
+          "startTime": "14:30",
+          "endTime": "17:30",
+          "subtitle": "田子坊",
+          "budget": 0,
+          "transportation": "地铁",
+          "accommodation": "无",
+          "foodRecommendations": "无",
+          "attractionIntroduction": "漫步田子坊，感受上海的艺术氛围。",
+          "notes": "田子坊免费开放，建议带上相机。"
+        },
+        {
+          "startTime": "18:00",
+          "endTime": "19:30",
+          "subtitle": "晚餐",
+          "budget": 150,
+          "transportation": "步行",
+          "accommodation": "无",
+          "foodRecommendations": "上海本帮菜",
+          "attractionIntroduction": "品尝上海本帮菜，如红烧肉、油爆虾等。",
+          "notes": "推荐餐厅：老正兴菜馆。"
+        },
+        {
+          "startTime": "20:00",
+          "endTime": "22:00",
+          "subtitle": "南京路步行街",
+          "budget": 0,
+          "transportation": "步行",
+          "accommodation": "无",
+          "foodRecommendations": "无",
+          "attractionIntroduction": "漫步南京路步行街，感受上海的繁华与时尚。",
+          "notes": "建议带上相机，记录美丽瞬间。"
+        }
+      ]
+    },
+    {
+      "date": "2023-10-03",
+      "schedule": [
+        {
+          "startTime": "09:00",
+          "endTime": "12:00",
+          "subtitle": "上海科技馆",
+          "budget": 60,
+          "transportation": "地铁",
+          "accommodation": "无",
+          "foodRecommendations": "无",
+          "attractionIntroduction": "参观上海科技馆，了解科技与自然的奥秘。",
+          "notes": "科技馆门票60元，建议提前购买。"
+        },
+        {
+          "startTime": "12:30",
+          "endTime": "14:00",
+          "subtitle": "午餐",
+          "budget": 100,
+          "transportation": "步行",
+          "accommodation": "无",
+          "foodRecommendations": "上海本帮菜",
+          "attractionIntroduction": "品尝上海本帮菜，如红烧肉、油爆虾等。",
+          "notes": "推荐餐厅：老正兴菜馆。"
+        },
+        {
+          "startTime": "14:30",
+          "endTime": "17:30",
+          "subtitle": "上海杜莎夫人蜡像馆",
+          "budget": 190,
+          "transportation": "地铁",
+          "accommodation": "无",
+          "foodRecommendations": "无",
+          "attractionIntroduction": "参观上海杜莎夫人蜡像馆，与名人蜡像合影。",
+          "notes": "蜡像馆门票190元，建议提前购买。"
+        },
+        {
+          "startTime": "18:00",
+          "endTime": "19:30",
+          "subtitle": "晚餐",
+          "budget": 150,
+          "transportation": "步行",
+          "accommodation": "无",
+          "foodRecommendations": "上海本帮菜",
+          "attractionIntroduction": "品尝上海本帮菜，如红烧肉、油爆虾等。",
+          "notes": "推荐餐厅：老正兴菜馆。"
+        },
+        {
+          "startTime": "20:00",
+          "endTime": "22:00",
+          "subtitle": "上海环球金融中心观光厅",
+          "budget": 180,
+          "transportation": "地铁",
+          "accommodation": "无",
+          "foodRecommendations": "无",
+          "attractionIntroduction": "登上上海环球金融中心观光厅，俯瞰上海夜景。",
+          "notes": "观光厅门票180元，建议提前购买。"
+        }
+      ]
+    },
+    {
+      "date": "2023-10-04",
+      "schedule": [
+        {
+          "startTime": "09:00",
+          "endTime": "12:00",
+          "subtitle": "上海迪士尼乐园",
+          "budget": 575,
+          "transportation": "地铁",
+          "accommodation": "无",
+          "foodRecommendations": "无",
+          "attractionIntroduction": "游玩上海迪士尼乐园，体验童话世界的乐趣。",
+          "notes": "迪士尼乐园门票575元，建议提前购买。"
+        },
+        {
+          "startTime": "12:30",
+          "endTime": "14:00",
+          "subtitle": "午餐",
+          "budget": 100,
+          "transportation": "步行",
+          "accommodation": "无",
+          "foodRecommendations": "迪士尼乐园内餐饮",
+          "attractionIntroduction": "在迪士尼乐园内享用午餐。",
+          "notes": "推荐尝试米奇形状的披萨。"
+        },
+        {
+          "startTime": "14:30",
+          "endTime": "17:30",
+          "subtitle": "继续游玩迪士尼乐园",
+          "budget": 0,
+          "transportation": "步行",
+          "accommodation": "无",
+          "foodRecommendations": "无",
+          "attractionIntroduction": "继续游玩迪士尼乐园，体验更多游乐设施。",
+          "notes": "建议提前规划游玩路线。"
+        },
+        {
+          "startTime": "18:00",
+          "endTime": "19:30",
+          "subtitle": "晚餐",
+          "budget": 150,
+          "transportation": "步行",
+          "accommodation": "无",
+          "foodRecommendations": "迪士尼乐园内餐饮",
+          "attractionIntroduction": "在迪士尼乐园内享用晚餐。",
+          "notes": "推荐尝试米奇形状的披萨。"
+        },
+        {
+          "startTime": "20:00",
+          "endTime": "22:00",
+          "subtitle": "迪士尼乐园烟花秀",
+          "budget": 0,
+          "transportation": "步行",
+          "accommodation": "无",
+          "foodRecommendations": "无",
+          "attractionIntroduction": "观看迪士尼乐园烟花秀，结束美好的一天。",
+          "notes": "建议提前占好位置。"
+        }
+      ]
+    },
+    {
+      "date": "2023-10-05",
+      "schedule": [
+        {
+          "startTime": "09:00",
+          "endTime": "12:00",
+          "subtitle": "上海虹桥站至北京南站",
+          "budget": 553,
+          "transportation": "高铁",
+          "accommodation": "无",
+          "foodRecommendations": "高铁餐",
+          "attractionIntroduction": "乘坐高铁从上海虹桥站返回北京南站，车程约4小时。",
+          "notes": "建议提前预订高铁票，确保座位。"
+        }
+      ]
+    }
+  ],
+  "costSummary": {
+    "highSpeedRail": 2212,
+    "accommodation": 0,
+    "meals": 1500,
+    "attractionTransportation": 200,
+    "other": 1088,
+    "total": 5000
+  },
+  "notes": [
+    "建议提前预订高铁票和景点门票，确保行程顺利。",
+    "注意保管好个人财物，特别是在人多的景点。"
+  ]
+}
         """
         
         # 打印响应的内容
@@ -277,7 +517,7 @@ def deepseek():
         response = requests.post(
             DEEPSEEK_API_URL,
             json={
-                "model": "deepseek-reasoner",
+                "model": "deepseek-chat",
                 "messages": [{"role": "user", "content": prompt}]
             },
             headers={
@@ -298,7 +538,8 @@ def deepseek():
 
         # 解析输出格式
         assistant_response = result["choices"][0]["message"]["content"]
-        logger.info(f"Response content: {assistant_response}")
+        assistant_response=assistant_response.replace("```json","").replace("```","")
+        logger.info(f"Response content: ================{assistant_response}")
         try:
             output = json.loads(assistant_response)
         except json.JSONDecodeError as e:
