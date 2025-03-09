@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
 import requests
 import logging
+import json
 
 app = Flask(__name__)
-
 
 # 配置日志
 log_file_path = 'app.log'  # 日志文件路径
@@ -22,62 +22,125 @@ DEEPSEEK_API_KEY = "sk-c47f6f0e0dc74381960322fa682a1529"  # 替换为你的 Deep
 # 缓存：存储每个用户的最近一轮对话输出
 user_cache = {}
 
-def generate_recommendation_prompt(age_groups, time, city, budget, transportation, departure, destination, user_feedback):
+def generate_recommendation_prompt(planId, agelevel, young, middle, old, startdate, enddate, budget, transportation, departure, destination, preference):
     """
-    根据用户输入生成推荐提示，使用木桶效应进行推荐。
-    缺失的数据用 ? 表示。
+    根据用户输入生成推荐提示。
     """
     base_prompt = (
-        f"用户计划从 {departure} 前往 {destination} 旅游，时间为 {time}，预算为 {budget}。"
-        f"年龄段分布：青年（{age_groups['young']}人），中年（{age_groups['middle']}人），老年（{age_groups['old']}人）。"
-        f"交通方式为 {transportation}。请按照以下优先级推荐："
-        f"1. 最佳旅游路线（包含景点名称、文字介绍、推荐参观时间点）。"
-        f"2. 交通方式。"
-        f"3. 推荐预算。"
-        f"4. 当地美食推荐。"
-        f"注意：使用木桶效应进行推荐，确保满足最低优先级的需求。"
+        f"用户计划从 {departure} 前往 {destination} 旅游，时间为 {startdate} 至 {enddate}，预算为 {budget}元。\n"
+        f"年龄段为 {agelevel}，青年人数为 {young}人，中年人数为 {middle}人，老年人数为 {old}人。\n"
+        f"交通方式为 {transportation}。\n"
+        f"用户的理想建议是：{preference}\n"
+        f"请按照以下优先级推荐：\n"
+        f"1. 最佳旅游路线（包含景点名称、文字介绍、推荐参观时间点）。\n"
+        f"2. 交通方式。\n"
+        f"3. 推荐预算。\n"
+        f"4. 当地美食推荐。\n"
+        f"注意：使用木桶效应进行推荐，确保满足最低优先级的需求。\n"
+        f"请按照以下格式返回结果：\n"
+        f"```json\n"
+        f'{{'
+          f'"title": "旅行标题",'
+          f'"itinerary": ['
+          f'{{'
+            f'"date": "日期",'
+            f'"schedule": ['
+              f'{{'
+                f'"startTime": "开始时间",'
+                f'"endTime": "结束时间",'
+                f'"subtitle": "活动标题",'
+                f'"budget": 预算,'
+                f'"transportation": "交通方式",'
+                f'"accommodation": "住宿信息",'
+                f'"foodRecommendations": "餐饮推荐",'
+                f'"attractionIntroduction": "景点介绍",'
+                f'"notes": "备注"'
+              f'}}'
+            f']'
+          f'}}'
+        f'],'
+        f'"costSummary": {{'
+          f'"highSpeedRail": 高铁费用,'
+          f'"accommodation": 住宿费用,'
+          f'"meals": 餐饮费用,'
+          f'"attractionTransportation": 景点交通费用,'
+          f'"other": 其他费用,'
+          f'"total": 总费用'
+        f'}},'
+        f'"notes": ['
+          f'"注意事项1",'
+          f'"注意事项2"'
+        f']'
+      f'}}\n'
+        f"```"
     )
     
-    if user_feedback:
-        return f"{base_prompt}\n用户反馈：{user_feedback}"
-    else:
-        return base_prompt
+    return base_prompt
 
 @app.route('/deepseek', methods=['POST'])
 def deepseek():
     # 获取用户输入
     data = request.json
 
-    # 首先尝试获取 user_id
-    user_id = data.get("user_id")  # 用户 ID
+    # 获取 planId
+    planId = data.get("planId")  # 用户 ID
     
-    # 验证用户 ID 是否存在
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
+    # 验证 planId 是否存在
+    if not planId:
+        return jsonify({"error": "planId is required"}), 400
 
-    # 继续解析其他参数
-    age_groups = {
-        "young": data.get("young", "?"),  # 青年人数，缺失时用 ? 表示
-        "middle": data.get("middle", "?"),  # 中年人数，缺失时用 ? 表示
-        "old": data.get("old", "?")  # 老年人数，缺失时用 ? 表示
-    }
-    time = data.get("time", "?")  # 旅行时间，缺失时用 ? 表示
-    city = data.get("city", "?")  # 旅行地点，缺失时用 ? 表示
-    budget = data.get("budget", "?")  # 预算，缺失时用 ? 表示
-    transportation = data.get("transportation", "?")  # 交通方式，缺失时用 ? 表示
-    departure = data.get("departure", "?")  # 出发位置，缺失时用 ? 表示
-    destination = data.get("destination", "?")  # 想要去的位置，缺失时用 ? 表示
-    user_feedback = data.get("feedback", "")  # 用户反馈（可选）
+    operation = data.get("operation")
+    if not operation:
+        return jsonify({"error": "operation is required"}), 400
 
-    # 检查 age_groups 中是否有任何值为 "0"
-    if any(age == "0" for age in age_groups.values()):
-        logger.info(f"用户 {user_id} 的 age_groups 中有值为 '0'，停止请求并清理缓存。")
-        if user_id in user_cache:
-            del user_cache[user_id]
-        return jsonify({"error": "age_groups 中有值为 '0'，请求被拒绝"}), 400
+    if operation == "confirm":
+        # 确认操作，删除缓存中的数据并结束操作
+        if planId in user_cache:
+            del user_cache[planId]
+            logger.info(f"计划 {planId} 的对话结果已从缓存中删除。")
+        return jsonify({"message": "操作已确认，对话结束。"})
 
-    # 生成推荐提示
-    prompt = generate_recommendation_prompt(age_groups, time, city, budget, transportation, departure, destination, user_feedback)
+    feedback = data.get("feedback", "")  # 用户反馈
+
+    if operation == "init":
+        # 初始化操作，创建新的对话
+        agelevel = data.get("agelevel", "?")  # 年龄段
+        young = data.get("young", "?")  # 青年人数
+        middle = data.get("middle", "?")  # 中年人数
+        old = data.get("old", "?")  # 老年人数
+        startdate = data.get("startdate", "?")  # 旅行开始日期
+        enddate = data.get("enddate", "?")  # 旅行结束日期
+        budget = data.get("budget", "?")  # 预算
+        transportation = data.get("transportation", "?")  # 交通方式
+        departure = data.get("departure", "?")  # 出发位置
+        destination = data.get("destination", "?")  # 目的地
+        preference = data.get("preference", "")  # 用户偏好
+
+        prompt = generate_recommendation_prompt(planId, agelevel, young, middle, old, startdate, enddate, budget, transportation, departure, destination, preference)
+
+        # 存储初始数据到缓存
+        user_cache[planId] = {
+            "agelevel": agelevel,
+            "young": young,
+            "middle": middle,
+            "old": old,
+            "startdate": startdate,
+            "enddate": enddate,
+            "budget": budget,
+            "transportation": transportation,
+            "departure": departure,
+            "destination": destination,
+            "preference": preference,
+            "最佳旅游路线": ""
+        }
+    elif operation in ["continue", "reload"]:
+        # 继续或重新加载操作，从缓存中读取数据并添加用户反馈
+        if planId not in user_cache:
+            return jsonify({"error": "planId not found in cache, please initialize first"}), 400
+        cached_data = user_cache[planId]
+        prompt = f"{cached_data['最佳旅游路线']} {feedback}"
+    else:
+        return jsonify({"error": "Invalid operation"}), 400
 
     try:
         # 打印发送给 DeepSeek API 的请求体
@@ -107,16 +170,15 @@ def deepseek():
 
         # 解析输出格式
         assistant_response = result["choices"][0]["message"]["content"]
-        output = {
-            "最佳旅游路线": assistant_response,  # 假设 DeepSeek 返回的格式符合要求
-            "交通方式": transportation if transportation != "?" else "待补充",
-            "推荐预算": budget if budget != "?" else "待补充",
-            "当地美食推荐": "待补充"  # 可以根据需要从 DeepSeek 返回的内容中提取
-        }
+        try:
+            output = json.loads(assistant_response)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response: {e}")
+            return jsonify({"error": "Failed to parse JSON response from DeepSeek API"}), 500
 
         # 更新缓存
-        user_cache[user_id] = output
-        logger.info(f"用户 {user_id} 的对话结果已更新到缓存。")
+        user_cache[planId]['最佳旅游路线'] = assistant_response
+        logger.info(f"计划 {planId} 的对话结果已更新到缓存。")
 
         # 返回结果
         return jsonify(output)
