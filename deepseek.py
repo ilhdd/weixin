@@ -79,7 +79,7 @@ def generate_recommendation_prompt(planId, agelevel, young, middle, old, startda
 
                  
 @app.route('/deepseek_test', methods=['POST'])
-def deepseek():
+def deepseek_test():
     # 获取用户输入
     data = request.json
 
