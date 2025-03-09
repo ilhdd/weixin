@@ -1,137 +1,202 @@
 from flask import Flask, request, jsonify
 import logging
+import json
 
 app = Flask(__name__)
 
 # 配置日志
-logging.basicConfig(level=logging.INFO)
+log_file_path = 'app.log'  # 日志文件路径
+logging.basicConfig(
+    level=logging.INFO,
+    filename=log_file_path,  # 将日志记录到文件
+    filemode='a',  # 追加模式
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-# 模拟固定的输出结果
-FIXED_OUTPUT = {
-    "最佳旅游路线": {
-        "标题": "上海至北京五一全家旅游方案（基于木桶效应，优先保障基础需求）",
-        "行程安排": [
-            {
-                "日期": "Day 1",
-                "景点安排": "天安门广场（上午）→ 故宫（下午，提前预约）→ 景山公园（傍晚观日落）",
-                "费用": {
-                    "门票": "故宫60元，景山公园免费",
-                    "交通": "地铁+打车，约50元"
-                },
-                "交通方式": "地铁+打车",
-                "景点介绍": {
-                    "天安门广场": "北京市中心地标，适合拍照留念。",
-                    "故宫": "明清皇家宫殿，建议午门进、神武门出，老人可租轮椅（免费）。",
-                    "景山公园": "俯瞰故宫全景，傍晚观日落。"
-                },
-                "美食推荐": [
-                    "护国寺小吃：豌豆黄、驴打滚（人均20元）。",
-                    "东来顺涮肉（分店多）：午市套餐人均80元。"
-                ]
-            },
-            {
-                "日期": "Day 2",
-                "景点安排": "颐和园（上午，乘船游湖）→ 圆明园（下午，电瓶车游览）→ 鸟巢/水立方（夜晚灯光）",
-                "费用": {
-                    "门票": "颐和园30元，圆明园25元，鸟巢/水立方外观免费",
-                    "交通": "地铁+打车，约60元"
-                },
-                "交通方式": "地铁+打车",
-                "景点介绍": {
-                    "颐和园": "昆明湖泛舟+长廊漫步，适合全家放松。",
-                    "圆明园": "电瓶车游览，减少步行压力。",
-                    "鸟巢/水立方": "夜晚灯光秀，适合拍照。"
-                },
-                "美食推荐": [
-                    "方砖厂炸酱面（南锣鼓巷）：25元/碗，谢霆锋同款。",
-                    "大鸭梨烤鸭（性价比高，半只鸭98元）。"
-                ]
-            },
-            {
-                "日期": "Day 3",
-                "景点安排": "八达岭长城（早班高铁+缆车上下）→ 什刹海/南锣鼓巷（傍晚休闲）",
-                "费用": {
-                    "门票": "长城40元，缆车往返140元",
-                    "交通": "高铁往返约60元，地铁+打车约40元"
-                },
-                "交通方式": "高铁+地铁+打车",
-                "景点介绍": {
-                    "八达岭长城": "缆车直达北七楼，减少攀登强度，五一早7点前抵达可避人流。",
-                    "什刹海/南锣鼓巷": "休闲街区，适合散步和品尝小吃。"
-                },
-                "美食推荐": [
-                    "护国寺小吃：豌豆黄、驴打滚（人均20元）。",
-                    "东来顺涮肉（分店多）：午市套餐人均80元。"
-                ]
-            },
-            {
-                "日期": "Day 4",
-                "景点安排": "北京动物园（看熊猫）→ 北海公园划船 → 返程",
-                "费用": {
-                    "门票": "动物园15元，北海公园10元，划船约50元",
-                    "交通": "地铁+打车，约50元"
-                },
-                "交通方式": "地铁+打车",
-                "景点介绍": {
-                    "北京动物园": "看熊猫，适合儿童。",
-                    "北海公园": "划船赏白塔，老年人与儿童友好。"
-                },
-                "美食推荐": [
-                    "方砖厂炸酱面（南锣鼓巷）：25元/碗，谢霆锋同款。",
-                    "大鸭梨烤鸭（性价比高，半只鸭98元）。"
-                ]
-            }
-        ],
-        "总费用": {
-            "高铁交通": "4424元",
-            "住宿": "1200元",
-            "餐饮": "600元",
-            "门票": "300元",
-            "其他": "476元",
-            "总预算": "7000元",
-            "超支说明": "若需压缩至5000元，建议交通降级、缩短行程、餐饮调整。"
-        }
-    }
-}
+# 缓存：存储每个用户的最近一轮对话输出
+user_cache = {}
 
-@app.route('/deepseek_test', methods=['POST'])
-def deepseek_test():
+def generate_recommendation_prompt(planId, agelevel, young, middle, old, startdate, enddate, budget, transportation, departure, destination, preference):
+    """
+    根据用户输入生成推荐提示。
+    """
+    base_prompt = (
+        f"用户计划从 {departure} 前往 {destination} 旅游，时间为 {startdate} 至 {enddate}，预算为 {budget}元。\n"
+        f"年龄段为 {agelevel}，青年人数为 {young}人，中年人数为 {middle}人，老年人数为 {old}人。\n"
+        f"交通方式为 {transportation}。\n"
+        f"用户的理想建议是：{preference}\n"
+        f"请按照以下优先级推荐：\n"
+        f"1. 最佳旅游路线（包含景点名称、文字介绍、推荐参观时间点）。\n"
+        f"2. 交通方式。\n"
+        f"3. 推荐预算。\n"
+        f"4. 当地美食推荐。\n"
+        f"注意：使用木桶效应进行推荐，确保满足最低优先级的需求。\n"
+        f"请按照以下格式返回结果：\n"
+        f"```json\n"
+        f'{{'
+          f'"title": "旅行标题",'
+          f'"itinerary": ['
+          f'{{'
+            f'"date": "日期",'
+            f'"schedule": ['
+              f'{{'
+                f'"startTime": "开始时间",'
+                f'"endTime": "结束时间",'
+                f'"subtitle": "活动标题",'
+                f'"budget": 预算,'
+                f'"transportation": "交通方式",'
+                f'"accommodation": "住宿信息",'
+                f'"foodRecommendations": "餐饮推荐",'
+                f'"attractionIntroduction": "景点介绍",'
+                f'"notes": "备注"'
+              f'}}'
+            f']'
+          f'}}'
+        f'],'
+        f'"costSummary": {{'
+          f'"highSpeedRail": 高铁费用,'
+          f'"accommodation": 住宿费用,'
+          f'"meals": 餐饮费用,'
+          f'"attractionTransportation": 景点交通费用,'
+          f'"other": 其他费用,'
+          f'"total": 总费用'
+        f'}},'
+        f'"notes": ['
+          f'"注意事项1",'
+          f'"注意事项2"'
+        f']'
+      f'}}\n'
+        f"```"
+    )
+    
+    return base_prompt
+
+@app.route('/deepseek', methods=['POST'])
+def deepseek():
     # 获取用户输入
     data = request.json
 
-    # 首先尝试获取 user_id
-    user_id = data.get("user_id")  # 用户 ID
+    # 获取 planId
+    planId = data.get("planId")  # 用户 ID
     
-    # 验证用户 ID 是否存在
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
+    # 验证 planId 是否存在
+    if not planId:
+        return jsonify({"error": "planId is required"}), 400
 
-    # 继续解析其他参数
-    age_groups = {
-        "young": data.get("young", "?"),  # 青年人数，缺失时用 ? 表示
-        "middle": data.get("middle", "?"),  # 中年人数，缺失时用 ? 表示
-        "old": data.get("old", "?")  # 老年人数，缺失时用 ? 表示
-    }
-    time = data.get("time", "?")  # 旅行时间，缺失时用 ? 表示
-    city = data.get("city", "?")  # 旅行地点，缺失时用 ? 表示
-    budget = data.get("budget", "?")  # 预算，缺失时用 ? 表示
-    transportation = data.get("transportation", "?")  # 交通方式，缺失时用 ? 表示
-    departure = data.get("departure", "?")  # 出发位置，缺失时用 ? 表示
-    destination = data.get("destination", "?")  # 想要去的位置，缺失时用 ? 表示
-    user_feedback = data.get("feedback", "")  # 用户反馈（可选）
+    operation = data.get("operation")
+    if not operation:
+        return jsonify({"error": "operation is required"}), 400
 
-    # 检查 age_groups 中是否有任何值为 "0"
-    if any(age == "0" for age in age_groups.values()):
-        logger.info(f"用户 {user_id} 的 age_groups 中有值为 '0'，停止请求并清理缓存。")
-        return jsonify({"error": "age_groups 中有值为 '0'，请求被拒绝"}), 400
+    if operation == "confirm":
+        # 确认操作，删除缓存中的数据并结束操作
+        if planId in user_cache:
+            del user_cache[planId]
+            logger.info(f"计划 {planId} 的对话结果已从缓存中删除。")
+        return jsonify({"message": "操作已确认，对话结束。"})
 
-    # 打印接收到的用户输入
-    logger.info(f"用户 {user_id} 的输入数据: {data}")
+    feedback = data.get("feedback", "")  # 用户反馈
 
-    # 直接返回固定的输出结果
-    logger.info(f"返回固定的输出结果给用户 {user_id}。")
-    return jsonify(FIXED_OUTPUT)
+    if operation == "init":
+        # 初始化操作，创建新的对话
+        agelevel = data.get("agelevel", "?")  # 年龄段
+        young = data.get("young", "?")  # 青年人数
+        middle = data.get("middle", "?")  # 中年人数
+        old = data.get("old", "?")  # 老年人数
+        startdate = data.get("startdate", "?")  # 旅行开始日期
+        enddate = data.get("enddate", "?")  # 旅行结束日期
+        budget = data.get("budget", "?")  # 预算
+        transportation = data.get("transportation", "?")  # 交通方式
+        departure = data.get("departure", "?")  # 出发位置
+        destination = data.get("destination", "?")  # 目的地
+        preference = data.get("preference", "")  # 用户偏好
+
+        prompt = generate_recommendation_prompt(planId, agelevel, young, middle, old, startdate, enddate, budget, transportation, departure, destination, preference)
+
+        # 存储初始数据到缓存
+        user_cache[planId] = {
+            "agelevel": agelevel,
+            "young": young,
+            "middle": middle,
+            "old": old,
+            "startdate": startdate,
+            "enddate": enddate,
+            "budget": budget,
+            "transportation": transportation,
+            "departure": departure,
+            "destination": destination,
+            "preference": preference,
+            "最佳旅游路线": ""
+        }
+    elif operation in ["continue", "reload"]:
+        # 继续或重新加载操作，从缓存中读取数据并添加用户反馈
+        if planId not in user_cache:
+            return jsonify({"error": "planId not found in cache, please initialize first"}), 400
+        cached_data = user_cache[planId]
+        prompt = f"{cached_data['最佳旅游路线']} {feedback}"
+    else:
+        return jsonify({"error": "Invalid operation"}), 400
+
+    try:
+        # 打印发送给 DeepSeek API 的请求体
+        logger.info(f"Sending request to DeepSeek API with payload: {prompt}")
+        
+        # 模拟 DeepSeek API 的响应
+        assistant_response = """
+        {
+            "title": "示例旅行标题",
+            "itinerary": [
+                {
+                    "date": "2023-10-01",
+                    "schedule": [
+                        {
+                            "startTime": "09:00",
+                            "endTime": "12:00",
+                            "subtitle": "参观故宫",
+                            "budget": 200,
+                            "transportation": "地铁",
+                            "accommodation": "无",
+                            "foodRecommendations": "附近有老北京炸酱面",
+                            "attractionIntroduction": "故宫是中国明清两代的皇家宫殿，位于北京中轴线的中心。",
+                            "notes": "建议提前预约门票"
+                        }
+                    ]
+                }
+            ],
+            "costSummary": {
+                "highSpeedRail": 500,
+                "accommodation": 1000,
+                "meals": 300,
+                "attractionTransportation": 100,
+                "other": 200,
+                "total": 2100
+            },
+            "notes": [
+                "注意天气变化",
+                "携带身份证"
+            ]
+        }
+        """
+        
+        # 打印响应的内容
+        logger.info(f"Response content: {assistant_response}")
+
+        # 解析输出格式
+        try:
+            output = json.loads(assistant_response)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response: {e}")
+            return jsonify({"error": "Failed to parse JSON response from DeepSeek API"}), 500
+
+        # 更新缓存
+        user_cache[planId]['最佳旅游路线'] = assistant_response
+        logger.info(f"计划 {planId} 的对话结果已更新到缓存。")
+
+        # 返回结果
+        return jsonify(output)
+    except Exception as e:
+        logger.error(f"模拟 DeepSeek API 调用失败, 具体错误: {e}, 请求体: {prompt}")
+        return jsonify({"error": f"模拟 DeepSeek API 调用失败，请稍后重试 ({str(e)})"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)
