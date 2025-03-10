@@ -77,7 +77,6 @@ def generate_recommendation_prompt(planId, agelevel, young, middle, old, startda
     
     return base_prompt
 
-                 
 @app.route('/deepseek_test', methods=['POST'])
 def deepseek_test():
     # 获取用户输入
@@ -93,13 +92,6 @@ def deepseek_test():
     operation = data.get("operation")
     if not operation:
         return jsonify({"error": "operation is required"}), 400
-
-    if operation == "confirm":
-        # 确认操作，删除缓存中的数据并结束操作
-        if planId in user_cache:
-            del user_cache[planId]
-            logger.info(f"计划 {planId} 的对话结果已从缓存中删除。")
-        return jsonify({"message": "操作已确认，对话结束。"})
 
     feedback = data.get("feedback", "")  # 用户反馈
 
@@ -434,6 +426,9 @@ def deepseek_test():
             logger.error(f"Failed to parse JSON response: {e}")
             return jsonify({"error": "Failed to parse JSON response from DeepSeek API"}), 500
 
+        # 在输出中添加 planId
+        output["planId"] = planId
+
         # 更新缓存
         user_cache[planId]['最佳旅游路线'] = assistant_response
         logger.info(f"计划 {planId} 的对话结果已更新到缓存。")
@@ -444,7 +439,6 @@ def deepseek_test():
         logger.error(f"模拟 DeepSeek API 调用失败, 具体错误: {e}, 请求体: {prompt}")
         return jsonify({"error": f"模拟 DeepSeek API 调用失败，请稍后重试 ({str(e)})"}), 500
 
-                 
 @app.route('/deepseek', methods=['POST'])
 def deepseek():
     # 获取用户输入
@@ -460,13 +454,6 @@ def deepseek():
     operation = data.get("operation")
     if not operation:
         return jsonify({"error": "operation is required"}), 400
-
-    if operation == "confirm":
-        # 确认操作，删除缓存中的数据并结束操作
-        if planId in user_cache:
-            del user_cache[planId]
-            logger.info(f"计划 {planId} 的对话结果已从缓存中删除。")
-        return jsonify({"message": "操作已确认，对话结束。"})
 
     feedback = data.get("feedback", "")  # 用户反馈
 
@@ -507,6 +494,31 @@ def deepseek():
             return jsonify({"error": "planId not found in cache, please initialize first"}), 400
         cached_data = user_cache[planId]
         prompt = f"{cached_data['最佳旅游路线']} {feedback}"
+    elif operation == "confirm":
+        # 确认操作，返回缓存中的数据并清除缓存
+        if planId not in user_cache:
+            return jsonify({"error": "planId not found in cache, no data to confirm"}), 400
+
+        # 获取缓存中的数据
+        cached_data = user_cache[planId]
+        assistant_response = cached_data.get("最佳旅游路线", "")
+
+        # 解析输出格式
+        try:
+            output = json.loads(assistant_response)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response: {e}")
+            return jsonify({"error": "Failed to parse JSON response from cache"}), 500
+
+        # 在输出中添加 planId
+        output["planId"] = planId
+
+        # 删除缓存中的数据
+        del user_cache[planId]
+        logger.info(f"计划 {planId} 的对话结果已从缓存中删除。")
+
+        # 返回结果
+        return jsonify(output)
     else:
         return jsonify({"error": "Invalid operation"}), 400
 
@@ -538,13 +550,16 @@ def deepseek():
 
         # 解析输出格式
         assistant_response = result["choices"][0]["message"]["content"]
-        assistant_response=assistant_response.replace("```json","").replace("```","")
+        assistant_response = assistant_response.replace("```json", "").replace("```", "")
         logger.info(f"Response content: ================{assistant_response}")
         try:
             output = json.loads(assistant_response)
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
             return jsonify({"error": "Failed to parse JSON response from DeepSeek API"}), 500
+
+        # 在输出中添加 planId
+        output["planId"] = planId
 
         # 更新缓存
         user_cache[planId]['最佳旅游路线'] = assistant_response
