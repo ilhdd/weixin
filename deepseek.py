@@ -40,7 +40,7 @@ def generate_recommendation_prompt(planId, agelevel, young, middle, old, startda
         f"请按照以下格式返回结果：\n"
         f"```json\n"
         f'{{'
-           f'"planId": "planId",'
+           f'"planId": "输入的planId不进行修改，返回时就用输入的planId",'
           f'"title": "旅行标题",'
           f'"itinerary": ['
           f'{{'
