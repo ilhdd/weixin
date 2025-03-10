@@ -40,6 +40,7 @@ def generate_recommendation_prompt(planId, agelevel, young, middle, old, startda
         f"请按照以下格式返回结果：\n"
         f"```json\n"
         f'{{'
+           f'"planId": "planId",'
           f'"title": "旅行标题",'
           f'"itinerary": ['
           f'{{'
@@ -142,6 +143,7 @@ def deepseek_test():
         # 模拟 DeepSeek API 的响应
         assistant_response = """
         {
+        "planId":"12345"
   "title": "北京至上海历史文化美食之旅",
   "itinerary": [
     {
