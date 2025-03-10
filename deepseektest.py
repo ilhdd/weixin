@@ -93,13 +93,6 @@ def deepseek_test():
     if not operation:
         return jsonify({"error": "operation is required"}), 400
 
-    if operation == "confirm":
-        # 确认操作，删除缓存中的数据并结束操作
-        if planId in user_cache:
-            del user_cache[planId]
-            logger.info(f"计划 {planId} 的对话结果已从缓存中删除。")
-        return jsonify({"message": "操作已确认，对话结束。"})
-
     feedback = data.get("feedback", "")  # 用户反馈
 
     if operation == "init":
@@ -462,13 +455,6 @@ def deepseek():
     if not operation:
         return jsonify({"error": "operation is required"}), 400
 
-    if operation == "confirm":
-        # 确认操作，删除缓存中的数据并结束操作
-        if planId in user_cache:
-            del user_cache[planId]
-            logger.info(f"计划 {planId} 的对话结果已从缓存中删除。")
-        return jsonify({"message": "操作已确认，对话结束。"})
-
     feedback = data.get("feedback", "")  # 用户反馈
 
     if operation == "init":
@@ -508,6 +494,31 @@ def deepseek():
             return jsonify({"error": "planId not found in cache, please initialize first"}), 400
         cached_data = user_cache[planId]
         prompt = f"{cached_data['最佳旅游路线']} {feedback}"
+    elif operation == "confirm":
+        # 确认操作，返回缓存中的数据并清除缓存
+        if planId not in user_cache:
+            return jsonify({"error": "planId not found in cache, no data to confirm"}), 400
+
+        # 获取缓存中的数据
+        cached_data = user_cache[planId]
+        assistant_response = cached_data.get("最佳旅游路线", "")
+
+        # 解析输出格式
+        try:
+            output = json.loads(assistant_response)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response: {e}")
+            return jsonify({"error": "Failed to parse JSON response from cache"}), 500
+
+        # 在输出中添加 planId
+        output["planId"] = planId
+
+        # 删除缓存中的数据
+        del user_cache[planId]
+        logger.info(f"计划 {planId} 的对话结果已从缓存中删除。")
+
+        # 返回结果
+        return jsonify(output)
     else:
         return jsonify({"error": "Invalid operation"}), 400
 
