@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import requests
 import logging
 import json
+import redis  # 引入 redis 库
 
 app = Flask(__name__)
 
@@ -19,8 +20,13 @@ logger = logging.getLogger(__name__)
 DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"  # 替换为实际的 DeepSeek API URL
 DEEPSEEK_API_KEY = "sk-c47f6f0e0dc74381960322fa682a1529"  # 替换为你的 DeepSeek API Key
 
-# 缓存：存储每个用户的最近一轮对话输出
-user_cache = {}
+# 初始化 Redis 客户端
+redis_client = redis.Redis(
+    host='localhost',
+    port=6379,
+    password='20230284',
+    decode_responses=True  # 自动将字节解码为字符串
+)
 
 def generate_recommendation_prompt(planId, agelevel, young, middle, old, startdate, enddate, budget, transportation, departure, destination, preference):
     """
@@ -95,6 +101,9 @@ def deepseek_test():
         return jsonify({"error": "operation is required"}), 400
 
     feedback = data.get("feedback", "")  # 用户反馈
+    
+    # Redis 键名前缀
+    redis_key_prefix = f"plan:{planId}:"
 
     if operation == "init":
         # 初始化操作，创建新的对话
@@ -112,8 +121,8 @@ def deepseek_test():
 
         prompt = generate_recommendation_prompt(planId, agelevel, young, middle, old, startdate, enddate, budget, transportation, departure, destination, preference)
 
-        # 存储初始数据到缓存
-        user_cache[planId] = {
+        # 存储初始数据到 Redis
+        redis_client.hset(f"{redis_key_prefix}info", mapping={
             "agelevel": agelevel,
             "young": young,
             "middle": middle,
@@ -124,15 +133,17 @@ def deepseek_test():
             "transportation": transportation,
             "departure": departure,
             "destination": destination,
-            "preference": preference,
-            "最佳旅游路线": ""
-        }
+            "preference": preference
+        })
+        redis_client.set(f"{redis_key_prefix}route", "")  # 初始化最佳旅游路线为空字符串
+        
     elif operation in ["continue", "reload"]:
-        # 继续或重新加载操作，从缓存中读取数据并添加用户反馈
-        if planId not in user_cache:
+        # 继续或重新加载操作，从 Redis 中读取数据并添加用户反馈
+        if not redis_client.exists(f"{redis_key_prefix}info"):
             return jsonify({"error": "planId not found in cache, please initialize first"}), 400
-        cached_data = user_cache[planId]
-        prompt = f"{cached_data['最佳旅游路线']} {feedback}"
+            
+        route = redis_client.get(f"{redis_key_prefix}route")
+        prompt = f"{route} {feedback}"
     else:
         return jsonify({"error": "Invalid operation"}), 400
 
@@ -433,8 +444,8 @@ def deepseek_test():
             **output
         }
 
-        # 更新缓存
-        user_cache[planId]['最佳旅游路线'] = json.dumps(output_with_planid, ensure_ascii=False, indent=2)
+        # 更新 Redis 缓存
+        redis_client.set(f"{redis_key_prefix}route", json.dumps(output_with_planid, ensure_ascii=False, indent=2))
         logger.info(f"计划 {planId} 的对话结果已更新到缓存。")
 
         # 返回结果
@@ -460,6 +471,9 @@ def deepseek():
         return jsonify({"error": "operation is required"}), 400
 
     feedback = data.get("feedback", "")  # 用户反馈
+    
+    # Redis 键名前缀
+    redis_key_prefix = f"plan:{planId}:"
 
     if operation == "init":
         # 初始化操作，创建新的对话
@@ -477,8 +491,8 @@ def deepseek():
 
         prompt = generate_recommendation_prompt(planId, agelevel, young, middle, old, startdate, enddate, budget, transportation, departure, destination, preference)
 
-        # 存储初始数据到缓存
-        user_cache[planId] = {
+        # 存储初始数据到 Redis
+        redis_client.hset(f"{redis_key_prefix}info", mapping={
             "agelevel": agelevel,
             "young": young,
             "middle": middle,
@@ -489,23 +503,24 @@ def deepseek():
             "transportation": transportation,
             "departure": departure,
             "destination": destination,
-            "preference": preference,
-            "最佳旅游路线": ""
-        }
+            "preference": preference
+        })
+        redis_client.set(f"{redis_key_prefix}route", "")  # 初始化最佳旅游路线为空字符串
+        
     elif operation in ["continue", "reload"]:
-        # 继续或重新加载操作，从缓存中读取数据并添加用户反馈
-        if planId not in user_cache:
+        # 继续或重新加载操作，从 Redis 中读取数据并添加用户反馈
+        if not redis_client.exists(f"{redis_key_prefix}info"):
             return jsonify({"error": "planId not found in cache, please initialize first"}), 400
-        cached_data = user_cache[planId]
-        prompt = f"{cached_data['最佳旅游路线']} {feedback} content部分请打包为json格式"
+            
+        route = redis_client.get(f"{redis_key_prefix}route")
+        prompt = f"{route} {feedback} content部分请打包为json格式"
     elif operation == "confirm":
-        # 确认操作，返回缓存中的数据并清除缓存
-        if planId not in user_cache:
+        # 确认操作，返回 Redis 中的数据并清除缓存
+        if not redis_client.exists(f"{redis_key_prefix}info"):
             return jsonify({"error": "planId not found in cache, no data to confirm"}), 400
 
-        # 获取缓存中的数据
-        cached_data = user_cache[planId]
-        assistant_response = cached_data.get("最佳旅游路线", "")
+        # 获取 Redis 中的数据
+        assistant_response = redis_client.get(f"{redis_key_prefix}route")
 
         # 解析输出格式
         try:
@@ -520,8 +535,8 @@ def deepseek():
             **output
         }
 
-        # 删除缓存中的数据
-        del user_cache[planId]
+        # 删除 Redis 中的数据
+        redis_client.delete(f"{redis_key_prefix}info", f"{redis_key_prefix}route")
         logger.info(f"计划 {planId} 的对话结果已从缓存中删除。")
 
         # 返回结果
@@ -571,10 +586,10 @@ def deepseek():
             **output
         }
 
-        # 更新缓存
-        user_cache[planId]['最佳旅游路线'] = json.dumps(output_with_planid, ensure_ascii=False, indent=2)
+        # 更新 Redis 缓存
+        redis_client.set(f"{redis_key_prefix}route", json.dumps(output_with_planid, ensure_ascii=False, indent=2))
         logger.info(f"计划 {planId} 的对话结果已更新到缓存。")
-        logger.info(f"Current user_cache: {user_cache}")
+        
         # 返回结果
         return jsonify(output_with_planid)
     except requests.exceptions.RequestException as e:
